@@ -18,14 +18,42 @@ from scipy.io import loadmat
 print('hello world')
 def get_arg():
     parser = argparse.ArgumentParser(description = 'Image Classifier')
-    parser.add_argument('--image_path', type=str, dest='image_path', default='flowers/test/13/image_05769.jpg')
-    parser.add_argument('--checkpoint', dest='checkpoint', default = 'checkpoint.pth', type = str, help = 'Checkpoint to load')
-    parser.add_argument('--topk', default = 5, type = int, help = 'Top k most likely classes')
-    parser.add_argument('--class_to_names', default = 'cat_to_name.json', type = str, help = 'Map of category to names')
-    parser.add_argument('--device', default = 'cpu', type = str, help = 'Device to train model on')
-    parser.add_argument('--hidden_units', default=512, type=int, dest='hidden_units', help='number of layers')
-    parser.add_argument('--arch', action = 'store', dest = 'arch', default = 'densenet121', choices = 'architectures', help = 'Architectures available to use')
-    parser.add_argument('--data_dir', default = 'flowers', dest = 'data_dir', type = str, help = 'flower directory')
+    parser.add_argument('--image_path', 
+                        type=str, 
+                        dest='image_path', 
+                        default='flowers/test/13/image_05769.jpg')
+    parser.add_argument('--checkpoint', 
+                        dest='checkpoint', 
+                        default = 'checkpoint.pth', 
+                        type = str, 
+                        help = 'Checkpoint to load')
+    parser.add_argument('--topk', 
+                        default = 5, 
+                        type = int, 
+                        help = 'Top k most likely classes')
+    parser.add_argument('--class_to_names', 
+                        default = 'cat_to_name.json', 
+                        type = str, help = 'Map of category to names')
+    parser.add_argument('--device', 
+                        default = True, 
+                        type = str, 
+                        help = 'Device to train model on')
+    parser.add_argument('--hidden_units', 
+                        default=512, 
+                        type=int, 
+                        dest='hidden_units', 
+                        help='number of layers')
+    parser.add_argument('--arch', 
+                        action = 'store', 
+                        dest = 'arch', 
+                        default = 'densenet121', 
+                        choices = 'architectures', 
+                        help = 'Architectures available to use')
+    parser.add_argument('--data_dir', 
+                        default = 'flowers', 
+                        dest = 'data_dir', 
+                        type = str, 
+                        help = 'flower directory')
     args = parser.parse_args()
 
     return args
@@ -104,31 +132,30 @@ def process_image(image_path):
 
 np_image_array = process_image(image_path)
 
-def predict(image_path, model, topk=5):
+def predict(image_path, model, topk, device):
     ''' Predict the class (or classes) of an image using a trained deep learning model.
     '''
 
     # TODO: Implement the code to predict the class from an image file
-    model.eval()
-    use_gpu = False
-    if torch.cuda.is_available():
-        use_gpu = True
-        model = model.cuda()
+    if device == True and torch.cuda.is_available():
+        device = torch.device("cuda")
+        model.cuda()
     else:
-        model = model.cpu()
+        device = torch.device("cpu") 
+    
     model.eval()
     image = Image.open(image_path)
     np_array = process_image(image)
     tensor = torch.from_numpy(np_array)
-    if use_gpu:
+    if device:
         var_inputs = Variable(tensor.float().cuda(), volatile=True)
     else:
         var_inputs = Variable(tensor, volatile=True)
     var_inputs = var_inputs.unsqueeze(0)
     output = model.forward(var_inputs)
     ps = torch.exp(output).data.topk(topk)
-    probabilities = ps[0].cpu() if use_gpu else ps[0]
-    classes = ps[1].cpu() if use_gpu else ps[1]
+    probabilities = ps[0].cpu() if device else ps[0]
+    classes = ps[1].cpu() if device else ps[1]
     class_to_idx_inverted = {model.class_to_idx[k]: k for k in model.class_to_idx}
     mapped_classes = list()
     for label in classes.numpy()[0]:
@@ -136,7 +163,7 @@ def predict(image_path, model, topk=5):
     return probabilities.numpy()[0], mapped_classes
 
 # image_path = test_dir + '/13/image_05769.jpg'
-probabilities, classes = predict(image_path, model)
+probabilities, classes = predict(image_path, model, topk, device)
 
 print(probabilities)
 print(classes)
@@ -147,7 +174,7 @@ max_probability = probabilities[max_index] * 100
 print(max_probability)
 label = classes[max_index]
 
-with open('cat_to_name.json', 'r') as f:
+with open(class_to_name, 'r') as f:
      cat_to_name = json.load(f)
      flower = cat_to_name[label]
 

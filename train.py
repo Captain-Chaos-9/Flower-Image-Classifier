@@ -54,9 +54,16 @@ def get_arguments():
 
     parser.add_argument('--gpu',
                         action = 'store',
-                        default = False,
+                        default = True,
                         dest = 'gpu',
                         help = 'enable GPU for training')
+    
+    parser.add_argument('--hidden_units',
+                        action='store',
+                        dest='hidden_units',
+                        type= int,
+                        default = 512,
+                        help = 'Sets the number of hidden units for the hidden layer')
 
     return parser.parse_args()
 
@@ -74,6 +81,7 @@ data_dir = args.data_dir
 arch = args.arch
 learning_rate = args.learning_rate
 epochs = args.epochs
+device = args.gpu
 
 dloader, class_to_idx = loader(data_dir)
 trainloader = dloader['train']
@@ -97,8 +105,17 @@ def validation(model, validloader, criterion):
 
 
 model, criterion, optimizer, hidden_units, in_size, out_size = build_classifier(arch, class_to_idx)
-def train_model(model, epochs, criterion, optimizer, trainloader, validloader):
-    model.to('cuda')
+def train_model(model, epochs, criterion, optimizer, trainloader, validloader, device):
+    
+    if device == True and torch.cuda.is_available():
+        device = torch.device("cuda")
+        model.cuda()
+    else:
+        device = torch.device("cpu") 
+    
+    model.to(device)
+    
+    model.to(device)
     print_every = 30
     steps = 0
     for e in range(epochs):
@@ -107,7 +124,7 @@ def train_model(model, epochs, criterion, optimizer, trainloader, validloader):
         for ii, (inputs, labels) in enumerate(trainloader):
             steps += 1
 
-            inputs, labels = inputs.to('cuda'), labels.to('cuda')
+            inputs, labels = inputs.to(device), labels.to(device)
 
             optimizer.zero_grad()
 
@@ -137,7 +154,7 @@ def train_model(model, epochs, criterion, optimizer, trainloader, validloader):
                 model.train()
     return model
 
-model = train_model(model, epochs, criterion, optimizer, trainloader, validloader)
+model = train_model(model, epochs, criterion, optimizer, trainloader, validloader, device)
 
 def sav_ck(model, arch, learning_rate, hidden_units, in_size, out_size, epochs, optimizer):
     checkpoint_path = 'checkpoint.pth'

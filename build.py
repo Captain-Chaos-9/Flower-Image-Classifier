@@ -41,6 +41,14 @@ def get_arguments():
                         action='store',
                         default ='cat_to_name.json',
                         type=str)
+    
+    parser.add_argument('--hidden_units',
+                        action='store',
+                        dest='hidden_units',
+                        type= int,
+                        default = 512,
+                        help = 'Sets the number of hidden units for the hidden layer')
+                        
 
     return parser.parse_args()
 
@@ -102,22 +110,24 @@ def build_classifier(arch, class_to_idx):
     print(arch)
     if arch == 'densenet121':
         model = models.densenet121(pretrained=True)
+        in_size = 1024
+        hidden_units = 512
     if arch == 'vgg16':
         model = models.vgg16(pretrained=True)
-    if arch == 'densenet161':
-        model = models.densenet161(pretrained=True)
-
+        in_size = 25088
+        hidden_units = 4096
+    if arch == 'resnet18':
+        model = models.resnet(pretrained=True)
+        in_size = 1024
+        hidden_units = 512
+        
+    out_size = 102
+    
     print("Model Retrieved")
 
     for param in model.parameters():
         param.requires_grad = False
-
-    in_size = model.classifier.in_features
-    hidden_units = int(in_size/2)
-    print(in_size)
-    print(hidden_units)
-    out_size = 102
-
+        
     classifier = nn.Sequential(OrderedDict([('fc1', nn.Linear(in_size, hidden_units)),
                                  ('relu', nn.ReLU()),
                                  ('dout1', nn.Dropout(p=0.15)),
@@ -127,7 +137,7 @@ def build_classifier(arch, class_to_idx):
     model.classifier = classifier
     model.class_to_idx = class_to_idx
     criterion = nn.NLLLoss()
-    optimizer = optim.Adam(model.classifier.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.classifier.parameters(), learning_rate)
     return model, criterion, optimizer, hidden_units, in_size, out_size
 
 model, criterion, optimizer, hidden_units, in_size, out_size = build_classifier(arch, class_to_idx)
